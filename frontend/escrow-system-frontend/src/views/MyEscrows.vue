@@ -6,12 +6,27 @@
         <p class="text-slate-600">View and manage all escrows you've created</p>
       </div>
 
-      <div v-if="loading" class="flex justify-center items-center py-20">
+      <div v-if="!isWalletConnected" class="text-center py-20">
+        <div class="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg class="w-10 h-10 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+            </path>
+          </svg>
+        </div>
+        <h3 class="text-xl font-semibold text-slate-700 mb-2">Wallet Not Connected</h3>
+        <p class="text-slate-500">Please connect your wallet to view your escrows</p>
+      </div>
+
+      <div v-else-if="loading" class="flex justify-center items-center py-20">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-slate-300 border-t-slate-600"></div>
       </div>
 
       <div v-else-if="error" class="p-6 bg-red-50 border border-red-200 rounded-xl">
         <p class="text-red-700">{{ error }}</p>
+        <button @click="fetchEscrows" class="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+          Retry
+        </button>
       </div>
 
       <div v-else-if="escrows.length === 0" class="text-center py-20">

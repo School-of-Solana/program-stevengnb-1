@@ -51,10 +51,22 @@
           </div>
 
           <div v-if="success" class="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <p class="text-sm text-emerald-700">Escrow created successfully!</p>
+            <p class="text-sm text-emerald-700 font-medium">Escrow created successfully!</p>
+            <p v-if="txSignature" class="text-xs text-emerald-600 mt-2 break-all">
+              Transaction:
+              <a :href="`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`"
+                 target="_blank"
+                 class="underline hover:text-emerald-800">
+                {{ txSignature }}
+              </a>
+            </p>
           </div>
 
-          <button type="submit" :disabled="loading"
+          <div v-if="!isWalletConnected" class="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p class="text-sm text-amber-700">Please connect your wallet to create an escrow</p>
+          </div>
+
+          <button type="submit" :disabled="loading || !isWalletConnected"
             class="w-full px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white font-medium rounded-lg hover:from-slate-700 hover:to-slate-800 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
             {{ loading ? 'Creating Escrow...' : 'Create Escrow' }}
           </button>

@@ -1,72 +1,121 @@
+import { ref, computed } from 'vue'
+import { useWorkspace } from '@/composables/useWorkspace'
+import { PublicKey, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { BN } from '@coral-xyz/anchor'
+
 export default {
   name: 'CreateEscrow',
-  data() {
-    return {
-      formData: {
-        recipientAddress: '',
-        amount: 0,
-        escrowId: 1
-      },
-      errors: {},
-      loading: false,
-      success: false,
-      error: ''
-    }
-  },
-  methods: {
-    validateForm() {
-      this.errors = {}
+  setup() {
+    const { program, wallet, programId } = useWorkspace()
 
-      if (!this.formData.recipientAddress) {
-        this.errors.recipientAddress = 'Recipient address is required'
+    const formData = ref({
+      recipientAddress: '',
+      amount: 0,
+      escrowId: 1
+    })
+    const errors = ref({})
+    const loading = ref(false)
+    const success = ref(false)
+    const error = ref('')
+    const txSignature = ref('')
+
+    const isWalletConnected = computed(() => !!wallet.value)
+
+    const validateForm = () => {
+      errors.value = {}
+
+      if (!isWalletConnected.value) {
+        error.value = 'Please connect your wallet first'
         return false
       }
 
-      if (this.formData.recipientAddress.length < 32) {
-        this.errors.recipientAddress = 'Invalid Solana address'
+      if (!formData.value.recipientAddress) {
+        errors.value.recipientAddress = 'Recipient address is required'
         return false
       }
 
-      if (this.formData.amount <= 0) {
-        this.errors.amount = 'Amount must be greater than 0'
+      try {
+        new PublicKey(formData.value.recipientAddress)
+      } catch {
+        errors.value.recipientAddress = 'Invalid Solana address'
         return false
       }
 
-      if (this.formData.escrowId <= 0) {
-        this.errors.escrowId = 'Escrow ID must be greater than 0'
+      if (formData.value.amount <= 0) {
+        errors.value.amount = 'Amount must be greater than 0'
+        return false
+      }
+
+      if (formData.value.escrowId <= 0 || !Number.isInteger(formData.value.escrowId)) {
+        errors.value.escrowId = 'Escrow ID must be a positive integer'
         return false
       }
 
       return true
-    },
-    async createEscrow() {
-      if (!this.validateForm()) {
-        return
-      }
+    }
 
-      this.loading = true
-      this.success = false
-      this.error = ''
+    const createEscrow = async () => {
+      if (!validateForm()) return
+
+      loading.value = true
+      success.value = false
+      error.value = ''
+      txSignature.value = ''
 
       try {
-        // TODO: Implement actual escrow creation with Solana program
-        console.log('Creating escrow with:', this.formData)
+        const recipientPubkey = new PublicKey(formData.value.recipientAddress)
+        const escrowId = new BN(formData.value.escrowId)
+        const amountLamports = new BN(formData.value.amount * LAMPORTS_PER_SOL)
 
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+        const [escrowPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from('escrow'),
+            wallet.value.publicKey.toBuffer(),
+            escrowId.toArrayLike(Buffer, 'le', 8)
+          ],
+          programId
+        )
 
-        this.success = true
+        const tx = await program.value.methods
+          .initialize(amountLamports, escrowId)
+          .accounts({
+            creator: wallet.value.publicKey,
+            recipient: recipientPubkey,
+            escrow: escrowPda,
+            systemProgram: SystemProgram.programId
+          })
+          .rpc()
 
-        // Reset form
-        this.formData.recipientAddress = ''
-        this.formData.amount = 0
-        this.formData.escrowId += 1
+        txSignature.value = tx
+        success.value = true
+
+        formData.value.recipientAddress = ''
+        formData.value.amount = 0
+        formData.value.escrowId += 1
       } catch (err) {
-        this.error = err.message || 'Failed to create escrow'
-        console.error('Error creating escrow:', err)
+        if (err.message?.includes('User rejected')) {
+          error.value = 'Transaction was cancelled'
+        } else if (err.message?.includes('insufficient funds')) {
+          error.value = 'Insufficient SOL balance'
+        } else if (err.message?.includes('already in use')) {
+          error.value = 'Escrow ID already exists. Try a different ID.'
+        } else {
+          error.value = (err.message || 'Failed to create escrow') + '. Please try again!'
+        }
       } finally {
-        this.loading = false
+        loading.value = false
       }
+    }
+
+    return {
+      formData,
+      errors,
+      loading,
+      success,
+      error,
+      txSignature,
+      isWalletConnected,
+      createEscrow
     }
   }
 }

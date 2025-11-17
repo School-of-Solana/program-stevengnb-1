@@ -12,7 +12,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Navbar from '@/components/layout/Navbar.vue'
@@ -23,7 +23,7 @@ const navLinks = computed(() => {
   return router.getRoutes()
     .map(route => ({
       to: route.path,
-      label: route.name?.toString()
+      label: route.name ? route.name.toString() : ''
     }))
 })
 </script>

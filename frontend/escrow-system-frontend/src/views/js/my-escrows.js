@@ -1,3 +1,7 @@
+import { ref, computed, onMounted, watch } from 'vue'
+import { useWorkspace } from '@/composables/useWorkspace'
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { BN } from '@coral-xyz/anchor'
 import EscrowCard from '@/components/EscrowCard.vue'
 
 export default {
@@ -5,95 +9,157 @@ export default {
   components: {
     EscrowCard
   },
-  data() {
-    return {
-      escrows: [],
-      loading: false,
-      error: ''
-    }
-  },
-  methods: {
-    getStateMessage(state) {
+  setup() {
+    const { program, wallet, programId } = useWorkspace()
+
+    const escrows = ref([])
+    const loading = ref(false)
+    const error = ref('')
+
+    const isWalletConnected = computed(() => !!wallet.value)
+
+    const getStateMessage = (state) => {
       const messages = {
-        Approved: { text: 'Waiting for recipient to claim', class: 'text-slate-500' },
-        Cancelled: { text: 'Cancelled', class: 'text-red-600' },
-        Claimed: { text: 'Claimed by recipient', class: 'text-blue-600' }
+        Approved: { text: 'Waiting for recipient to claim', class: 'text-amber-600' },
+        Cancelled: { text: 'Cancelled - SOL returned', class: 'text-red-600' },
+        Claimed: { text: 'Claimed by recipient', class: 'text-emerald-600' }
       }
       return messages[state] || { text: state, class: 'text-slate-500' }
-    },
-    async fetchEscrows() {
-      this.loading = true
-      this.error = ''
+    }
 
-      try {
-        // TODO: Implement actual escrow fetching from Solana program
-        console.log('Fetching my escrows...')
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+    const parseEscrowState = (stateObj) => {
+      if (stateObj.pending) return 'Pending'
+      if (stateObj.approved) return 'Approved'
+      if (stateObj.cancelled) return 'Cancelled'
+      if (stateObj.claimed) return 'Claimed'
+      return 'Unknown'
+    }
 
-        const now = Math.floor(Date.now() / 1000)
-        this.escrows = [
-          {
-            creator: 'DummyWalletAddress123456789',
-            recipient: 'RecipientAddress987654321',
-            amount: 0.5,
-            escrowId: 1,
-            state: 'Pending',
-            createdAt: now - 86400,
-            bump: 255,
-            publicKey: 'EscrowPDA111222333444555',
-          },
-          {
-            creator: 'DummyWalletAddress123456789',
-            recipient: 'AnotherRecipient111222333',
-            amount: 1.2,
-            escrowId: 2,
-            state: 'Approved',
-            createdAt: now - 172800,
-            bump: 254,
-            publicKey: 'EscrowPDA444555666777888',
-          },
-        ]
-      } catch (err) {
-        this.error = err.message || 'Failed to fetch escrows'
-        console.error('Error fetching escrows:', err)
-      } finally {
-        this.loading = false
+    const fetchEscrows = async () => {
+      if (!isWalletConnected.value || !program.value) {
+        escrows.value = []
+        return
       }
-    },
-    async handleApprove(escrowId) {
-      try {
-        // TODO: Implement actual approve transaction with Solana program
-        console.log('Approving escrow:', escrowId)
-        await new Promise((resolve) => setTimeout(resolve, 1000))
 
-        const escrow = this.escrows.find(e => e.escrowId === escrowId)
+      loading.value = true
+      error.value = ''
+
+      try {
+        const allEscrows = await program.value.account.escrow.all()
+
+        const myEscrows = allEscrows
+          .filter(item => item.account.creator.equals(wallet.value.publicKey))
+          .map(item => ({
+            publicKey: item.publicKey.toString(),
+            creator: item.account.creator.toString(),
+            recipient: item.account.recipient.toString(),
+            amount: item.account.amount.toNumber() / LAMPORTS_PER_SOL,
+            escrowId: item.account.escrowId.toNumber(),
+            state: parseEscrowState(item.account.state),
+            createdAt: item.account.createdAt.toNumber(),
+            bump: item.account.bump
+          }))
+          .sort((a, b) => b.createdAt - a.createdAt)
+
+        escrows.value = myEscrows
+      } catch (err) {
+        error.value = err.message || 'Failed to fetch escrows'
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const handleApprove = async (escrowId) => {
+      if (!program.value || !wallet.value) return
+
+      try {
+        const escrowIdBN = new BN(escrowId)
+
+        const [escrowPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from('escrow'),
+            wallet.value.publicKey.toBuffer(),
+            escrowIdBN.toArrayLike(Buffer, 'le', 8)
+          ],
+          programId
+        )
+
+        const tx = await program.value.methods
+          .approve()
+          .accounts({
+            creator: wallet.value.publicKey,
+            escrow: escrowPda
+          })
+          .rpc()
+
+        const escrow = escrows.value.find(e => e.escrowId === escrowId)
         if (escrow) {
           escrow.state = 'Approved'
         }
-      } catch (err) {
-        console.error('Failed to approve:', err)
-        this.error = err.message || 'Failed to approve escrow'
-      }
-    },
-    async handleCancel(escrowId) {
-      if (confirm('Are you sure you want to cancel this escrow?')) {
-        try {
-          // TODO: Implement actual cancel transaction with Solana program
-          console.log('Canceling escrow:', escrowId)
-          await new Promise((resolve) => setTimeout(resolve, 1000))
 
-          const escrow = this.escrows.find(e => e.escrowId === escrowId)
-          if (escrow) {
-            escrow.state = 'Cancelled'
-          }
-        } catch (err) {
-          console.error('Failed to cancel:', err)
-          this.error = err.message || 'Failed to cancel escrow'
-        }
+        alert(`Escrow approved! Transaction: ${tx}`)
+      } catch (err) {
+        error.value = err.message || 'Failed to approve escrow'
       }
     }
-  },
-  mounted() {
-    this.fetchEscrows()
+
+    const handleCancel = async (escrowId) => {
+      if (!program.value || !wallet.value) return
+
+      if (!confirm('Are you sure you want to cancel this escrow? The SOL will be returned to your wallet.')) {
+        return
+      }
+
+      try {
+        const escrowIdBN = new BN(escrowId)
+
+        const [escrowPda] = PublicKey.findProgramAddressSync(
+          [
+            Buffer.from('escrow'),
+            wallet.value.publicKey.toBuffer(),
+            escrowIdBN.toArrayLike(Buffer, 'le', 8)
+          ],
+          programId
+        )
+
+        const tx = await program.value.methods
+          .cancel()
+          .accounts({
+            creator: wallet.value.publicKey,
+            escrow: escrowPda
+          })
+          .rpc()
+
+        const escrow = escrows.value.find(e => e.escrowId === escrowId)
+        if (escrow) {
+          escrow.state = 'Cancelled'
+        }
+
+        alert(`Escrow cancelled! SOL returned. Transaction: ${tx}`)
+      } catch (err) {
+        error.value = err.message || 'Failed to cancel escrow'
+      }
+    }
+
+    onMounted(() => {
+      if (isWalletConnected.value) {
+        fetchEscrows()
+      }
+    })
+
+    watch(() => wallet.value, () => {
+      fetchEscrows()
+    })
+
+    return {
+      escrows,
+      loading,
+      error,
+      isWalletConnected,
+      getStateMessage,
+      handleApprove,
+      handleCancel,
+      fetchEscrows
+    }
   }
 }

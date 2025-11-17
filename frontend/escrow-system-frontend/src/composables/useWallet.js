@@ -1,47 +1,51 @@
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { useWallet as useSolanaWallet } from 'solana-wallets-vue'
+import { connection, logNetwork } from '@/config/solana'
 
 export function useWallet() {
-  const connected = ref(false)
-  const walletAddress = ref('')
+  const wallet = useSolanaWallet()
+
+  const walletAddress = computed(() => {
+    return wallet.publicKey.value?.toString() || ''
+  })
 
   const truncatedAddress = computed(() => {
     if (!walletAddress.value) return ''
     return `${walletAddress.value.slice(0, 4)}...${walletAddress.value.slice(-4)}`
   })
 
-  const connectWallet = async () => {
-    // TODO: Implement wallet connection with @solana/wallet-adapter-vue
-    // For now, this is a placeholder
-    console.log('Connecting wallet...')
-
+  const connectWallet = () => {
     try {
-      // Simulate connection - Replace with actual wallet adapter logic
-      connected.value = true
-      walletAddress.value = 'DummyWalletAddress123456789'
-
-      // Actual implementation will look like:
-      // const { select, wallets } = useWallet()
-      // if (wallets.value.length > 0) {
-      //   select(wallets.value[0].adapter.name)
-      // }
+      if (!wallet.wallet.value) {
+        wallet.select('Phantom')
+      }
     } catch (error) {
       console.error('Failed to connect wallet:', error)
       throw error
     }
   }
 
-  const disconnectWallet = () => {
-    // TODO: Implement wallet disconnection
-    console.log('Disconnecting wallet...')
-    connected.value = false
-    walletAddress.value = ''
+  const disconnectWallet = async () => {
+    try {
+      await wallet.disconnect()
+    } catch (error) {
+      console.error('Failed to disconnect wallet:', error)
+      throw error
+    }
   }
 
   return {
-    connected,
+    connected: wallet.connected,
     walletAddress,
     truncatedAddress,
     connectWallet,
     disconnectWallet,
+    publicKey: wallet.publicKey,
+    sendTransaction: wallet.sendTransaction,
+    signTransaction: wallet.signTransaction,
+    signMessage: wallet.signMessage,
+    select: wallet.select,
+    wallet: wallet.wallet,
+    connection,
   }
 }
