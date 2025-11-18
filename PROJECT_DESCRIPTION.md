@@ -1,6 +1,6 @@
 # Project Description
 
-**Deployed Frontend URL:** https://guardsol.vercep.app/
+**Deployed Frontend URL:** https://guard-sol.vercel.app/
 
 **Solana Program ID:** FBkdzDicx5cyJoTQ1NrM9BPhFkhwFk4a1WRbvGGNYMqY
 
