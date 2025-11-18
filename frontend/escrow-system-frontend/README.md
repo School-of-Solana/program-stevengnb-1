@@ -1,5 +1,25 @@
-# Vue 3 + Vite
+# GuardSOL
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Secure peer-to-peer SOL payments with approval mechanism. Create, manage, and claim escrows with confidence.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Built With
+
+- Vue 3 + Vite
+- TypeScript
+- Tailwind CSS
+- Solana Web3.js
+- Solana Wallet Adapter
+
+## Development
+
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```

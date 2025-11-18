@@ -37,7 +37,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-  document.title = to.meta.title ? `${to.meta.title} - Escrow System` : 'Escrow System'
+  document.title = to.meta.title ? `${to.meta.title} - GuardSOL` : 'GuardSOL'
   next()
 })
 

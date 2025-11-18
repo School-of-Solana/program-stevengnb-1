@@ -1,6 +1,6 @@
 # Project Description
 
-**Deployed Frontend URL:** VERCEL URL
+**Deployed Frontend URL:** https://guardsol.vercep.app/
 
 **Solana Program ID:** FBkdzDicx5cyJoTQ1NrM9BPhFkhwFk4a1WRbvGGNYMqY
 
@@ -22,9 +22,9 @@ A secure payment service on Solana that protects both buyers and sellers. You de
 
 1. **Connect Wallet** - Connect your Solana wallet
 2. **Create Escrow** - Enter recipient's wallet address, amount in SOL, unique escrow ID, and click "Create"
-3. **View Escrows** - Check your created escrows or escrows waiting for you to claim
+3. **My Escrows** - Check your created escrows
 4. **Approve Work** - Once recipient delivers, click "Approve" on your created escrow
-5. **Claim Funds** - If you're the recipient and escrow is approved, click "Claim" to receive SOL
+5. **Claimable Escrow** - Check escrows where you're the recipient and if the escrow is approved, click "Claim" to receive SOL
 6. **Cancel** - If work wasn't delivered, click "Cancel" on pending escrows to get refund
 
 ## Program Architecture
@@ -96,16 +96,6 @@ anchor test     # run all tests
 ```
 
 ### Additional Notes for Evaluators
-
-This is my first Solana program! The biggest learning curve was understanding state management and how to properly validate state transitions. I initially tried to implement this without states, but realized that would create security issues where recipients could claim before work was verified.
-
-Understanding PDAs and how they differ from regular keypairs took time. The account constraints (`has_one = creator`, `constraint = escrow.state == EscrowState::Pending`) were confusing at first but made sense once I understood Anchor validates these automatically.
-
-Testing state transitions was challenging - I had to learn how to properly set up test scenarios for each state and verify that invalid transitions fail with the correct errors.
-
-The escrow_id parameter allows flexibility for creators to have multiple simultaneous escrows, which seems practical for freelancers or merchants handling multiple clients/orders.
-
-**Design Trade-offs and Limitations:**
 
 The approval mechanism creates an inherent trust assumption that goes against pure decentralization principles. The recipient must trust that the creator will approve the escrow after work is delivered. This introduces several risks:
 

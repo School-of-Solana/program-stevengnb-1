@@ -3,7 +3,7 @@
     <div class="max-w-7xl mx-auto px-6 py-16">
       <div class="text-center mb-16">
         <h1 class="text-5xl font-bold text-slate-800 mb-4">
-          Solana Escrow System
+          GuardSOL
         </h1>
         <p class="text-lg text-slate-600 max-w-2xl mx-auto">
           Secure peer-to-peer SOL payments with approval mechanism. Create, manage, and claim escrows with confidence.

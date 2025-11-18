@@ -5,7 +5,7 @@
         to="/"
         class="text-2xl font-bold text-slate-700 hover:text-slate-900 transition-colors"
       >
-        Escrow System
+        GuardSOL
       </RouterLink>
 
       <div class="flex items-center gap-6">
